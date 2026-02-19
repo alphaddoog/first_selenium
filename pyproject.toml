@@ -1,0 +1,110 @@
+[project]
+name = "hub-automation-integration-api"
+version = "1.0.0"
+description = "Automação assícrona"
+authors = [
+    {name = "Hedris Pereira",email = "hedrisgts@gmail.com"}
+]
+license = "BSD-2-Clause"
+readme = "README.md"
+requires-python = ">=3.13,<4.0"
+dependencies = [
+    "selenium (>=4.40.0,<5.0.0)"
+]
+
+
+[tool.poetry]
+packages = [{include = "src"}]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+pytest = '^8.3.5'
+pytest-asyncio = '^1.0.0'
+pytest-cov = "^6.1.1"
+ruff = '^0.11.12'
+taskipy = "^1.14.1"
+pytest-dotenv = "^0.5.2"
+bandit = "^1.8.3"
+
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+addopts = [
+    '-v', '-s',
+    '--strict-config',
+    '--strict-markers',
+    '--cov=src',
+    '--cov-report=term-missing:skip-covered',
+    '--cov-report=html:reports/coverage',
+    '--cov-fail-under=100',
+    '-p no:warnings',
+]
+filterwarnings = ['error']
+testpaths = ['tests']
+markers = [
+    'need_dot_env: tests that consult data in a dot env file.',
+    'integration: integration tests against a real CRM environment.',
+    'unit: unit tests.',
+]
+pythonpath = '.'
+env_files = [".env.test"]
+
+[tool.coverage.run]
+omit = [
+    "src/__main__.py",
+    "src/main.py",
+    "src/core/config/logging.py",
+    "src/**/__init__.py",
+]
+
+[tool.ruff]
+target-version = "py313"
+exclude = ['.git', '__pycache__', '.mypy_cache', '.pytest_cache']
+fix = true
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+extend-ignore = ["PLW0603", "PLR0913"]
+select = [
+    'E',  # pycodestyle errors
+    'W',  # pycodestyle warnings
+    'F',  # pyflakes
+    'I',  # isort (organização de imports)
+    'PL', # pylint
+    'PT', # flake8-pytest
+]
+
+[tool.ruff.format]
+preview = true
+quote-style = 'single'
+
+[tool.ruff.lint.per-file-ignores]
+'__init__.py' = ['F401']
+
+
+[tool.mypy]
+strict = true
+files = ["src"]
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+explicit_package_bases = true
+
+[tool.bandit]
+targets = ["src"]
+
+[tool.taskipy.tasks]
+lint = 'ruff check .; ruff check . --diff'
+check = 'ruff check . --fix'
+format = 'ruff format .'
+run = 'python -Om src'
+pre_test = 'task lint'
+test = 'pytest -s -x --cov=src -vv'
+post_test = 'coverage html'
+pre_test_unit = 'task lint'
+test_unit = 'pytest tests -m "unit" -s -x --cov=src -vv'
+pre_test_integration = 'task lint'
+test_integration = 'pytest tests -m "integration" -s -x --no-cov -vv'

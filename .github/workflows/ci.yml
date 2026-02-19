@@ -1,0 +1,59 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install Poetry
+        run: pip install "poetry==2.2.1"
+      - name: Install dependencies
+        run: poetry install --no-interaction --no-ansi
+      - name: Lint
+        run: poetry run task lint
+      - name: Unit tests
+        run: poetry run task test_unit
+
+  integration:
+    runs-on: ubuntu-latest
+    needs: [unit]
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    services:
+      selenium:
+        image: selenium/standalone-chrome:latest
+        ports:
+          - 4444:4444
+        options: >-
+          --shm-size=2g
+          --health-cmd="bash -lc 'curl -fsS http://localhost:4444/wd/hub/status | grep -q '\"ready\":true''"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+    env:
+      SELENIUM_REMOTE_URL: http://localhost:4444/wd/hub
+      SELENIUM_HEADLESS: "1"
+      CRM_BASE_URL: ${{ secrets.CRM_BASE_URL }}
+      CRM_USERNAME: ${{ secrets.CRM_USERNAME }}
+      CRM_PASSWORD: ${{ secrets.CRM_PASSWORD }}
+      CRM_EXPECTED_TITLE_CONTAINS: ${{ secrets.CRM_EXPECTED_TITLE_CONTAINS }}
+      RUN_ID: gha
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install Poetry
+        run: pip install "poetry==2.2.1"
+      - name: Install dependencies
+        run: poetry install --no-interaction --no-ansi
+      - name: Integration tests
+        run: poetry run task test_integration
+

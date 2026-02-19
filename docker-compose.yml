@@ -1,0 +1,30 @@
+services:
+  selenium:
+    image: ${SELENIUM_IMAGE:-selenium/standalone-chrome:latest}
+    shm_size: 2gb
+    ports:
+      - "4444:4444"
+    environment:
+      - SE_NODE_MAX_SESSIONS=1
+      - SE_NODE_SESSION_TIMEOUT=300
+    healthcheck:
+      test: ["CMD", "bash", "-lc", "curl -fsS http://localhost:4444/wd/hub/status | grep -q '\"ready\":true'"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  tests:
+    build: .
+    depends_on:
+      selenium:
+        condition: service_healthy
+    environment:
+      - SELENIUM_REMOTE_URL=http://selenium:4444/wd/hub
+      - SELENIUM_HEADLESS=1
+      - CRM_BASE_URL=${CRM_BASE_URL}
+      - CRM_USERNAME=${CRM_USERNAME}
+      - CRM_PASSWORD=${CRM_PASSWORD}
+      - CRM_EXPECTED_TITLE_CONTAINS=${CRM_EXPECTED_TITLE_CONTAINS:-}
+      - RUN_ID=${RUN_ID:-compose}
+    command: ["poetry", "run", "pytest", "tests", "-m", "integration", "--no-cov", "-vv"]
+
